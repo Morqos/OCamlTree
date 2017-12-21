@@ -28,7 +28,7 @@ type exp =
 	| Select of (ide list) * exp * exp tree			(* node's conditional selection *)
 	
 
-and 'v tree = Empty									(* empty tree *)
+and 'v tree = Empty						(* empty tree *)
 	| Node of ide * 'v * 'v tree * 'v tree;;		(* binary tree *)
 
 
@@ -146,7 +146,7 @@ let rec eval (e:exp) (s:'v env) =
 	| Update(iList, Den(f), t) -> VTree(updateTree iList f t s)
 	| Update(_, _, _) -> failwith ("Update: Not correct values")
 
-	| Select(iList, Den(f), t) -> VTree(selectTree iList f t s) (*Inserire controllo che funzione restituisca booleano*)
+	| Select(iList, Den(f), t) -> VTree(selectTree iList f t s)
 	| Select(_, _, _) -> failwith ("Select: Not correct values")
 
 
@@ -207,7 +207,7 @@ and selectTree iList f t s = match t with
 								then Node(i, eval e s, selectTree iList f tl s, selectTree iList f tr s)
 								else if selectTree iList f tl s = Empty
 										then if selectTree iList f tr s = Empty then Empty 
-																				else selectTree iList f tr s
+											else selectTree iList f tr s
 										else selectTree iList f tl s 
 	| Empty -> Empty
 
