@@ -19,9 +19,9 @@ type exp =
 	| Fun of ide * exp
 	| Apply of exp * exp
 	
-	| ETree of exp tree								(* trees are also expressions *)
+	| ETree of exp tree					(* trees are also expressions *)
 	
-	| ApplyOver of exp * exp tree					(* application function to nodes *)
+	| ApplyOver of exp * exp tree				(* application function to nodes *)
 	
 	| Update of (ide list) * exp * exp tree			(* node update *)
 	
