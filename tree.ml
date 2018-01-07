@@ -143,10 +143,10 @@ let rec eval (e:exp) (s:'v env) =
 	| ApplyOver(Den(f), t) -> VTree(applyOver f t s)
 	| ApplyOver(_, _) -> failwith ("ApplyOver: Not correct values")
 
-	| Update(iList, Den(f), t) -> VTree(updateTree iList f t s)
+	| Update(path, Den(f), t) -> VTree(updateTree path f t s)
 	| Update(_, _, _) -> failwith ("Update: Not correct values")
 
-	| Select(iList, Den(f), t) -> VTree(selectTree iList f t s)
+	| Select(path, Den(f), t) -> VTree(selectTree path t f s)
 	| Select(_, _, _) -> failwith ("Select: Not correct values")
 
 
@@ -177,7 +177,6 @@ and compatible f e s =
 				| _ -> false)
 
 
-
 and treeTraverse t s = match t with
 	| Node(i, e, tl, tr) -> Node(i, eval e s, treeTraverse tl s, treeTraverse tr s)
 	| Empty -> Empty
@@ -189,29 +188,84 @@ and applyOver f t s = match t with
 			else Node(i, eval e s, applyOver f tl s, applyOver f tr s)
 	| Empty -> Empty
 	
-	
-and updateTree iList f t s = match t with
+
+
+
+
+and updateTree path f t s = match t with
 	| Node(i, e, tl, tr) ->
-		if compatible f e s	&& checkPath iList i then Node(i, eval (Apply(Den(f), e)) s, updateTree iList f tl s, updateTree iList f tr s)
-			else Node(i, eval e s, updateTree iList f tl s, updateTree iList f tr s)
+		(match path with
+			| radix::continuePath ->
+				if radix = i
+					then Node(i, eval (Apply(Den(f), e)) s, updatecheckPath continuePath tl f s , updatecheckPath continuePath tr f s)
+					else Node(i, eval e s, updateTree path f tl s , updateTree path f tr s)
+			| [] -> Empty)
 	| Empty -> Empty
 
 
-and checkPath iList i = match iList with
-	| id::idl -> if id=i then true else checkPath idl i
-	| [] -> false
-	
-	
-and selectTree iList f t s = match t with
-	| Node(i, e, tl, tr) -> if checkPath iList i && compatible f e s && (eval (Apply(Den(f), e)) s) = Bool(true)
-								then Node(i, eval e s, selectTree iList f tl s, selectTree iList f tr s)
-								else if selectTree iList f tl s = Empty
-										then if selectTree iList f tr s = Empty then Empty 
-											else selectTree iList f tr s
-										else selectTree iList f tl s 
+and updatecheckPath path t f s = match t with
+	| Node(i, e, tl, tr) ->
+		(match path with
+			| id::continuePath ->
+				if i = id
+					then 
+						if compatible f e s
+							then Node(i, (eval (Apply(Den(f), e)) s), updatecheckPath continuePath tl f s, updatecheckPath continuePath tr f s)
+							else Node(i, eval e s, updatecheckPath continuePath tl f s, updatecheckPath continuePath tr f s)
+					else
+						Node(i, eval e s, treeTraverse tl s, treeTraverse tr s)
+			| [] -> Empty)
 	| Empty -> Empty
 
 
+
+
+
+
+and selectTree path t f s = match t with
+	| Node(i, e, tl, tr) ->
+		(match path with
+			| radix::continuePath ->
+				if findRadix path t f s = Empty
+					then selectTree continuePath t f s
+					else findRadix path t f s
+			| [] -> Empty)				
+	| Empty -> Empty
+
+
+
+and selectCheckPath path t f s = match t with
+	| Node(i, e, tl, tr) ->
+		(match path with
+			| id::continuePath ->
+				if i = id
+					then 
+						if compatible f e s && (eval (Apply(Den(f), e)) s) = Bool(true)
+							then Node(i, eval e s, selectCheckPath continuePath tl f s, selectCheckPath continuePath tr f s)
+							else Empty
+					else
+						Empty
+			| [] -> Empty)
+	| Empty -> Empty
+
+
+
+and findRadix path t f s = match t with
+	| Node(i, e, tl, tr) ->
+		(match path with
+			| radix::continuePath ->
+				if i = radix && compatible f e s && (eval (Apply(Den(f), e)) s) = Bool(true)
+					then Node(i, eval e s, selectCheckPath continuePath tl f s, selectCheckPath continuePath tr f s)
+					else
+						if findRadix path tl f s = Empty
+							then
+								if findRadix path tr f s = Empty
+									then Empty
+									else findRadix path tr f s
+							else
+								findRadix path tl f s
+			| [] -> Empty)
+	| Empty -> Empty
 
 
 
@@ -271,7 +325,7 @@ eval applyOver_test emptyEnv;;
 let applyOver_test2 = Let("f", Fun("x", Not(Den("x"))), ApplyOver(Den("f"), tree_test_omogeneity));;
 eval applyOver_test2 emptyEnv;;
 
-let update_test = Let("f", Fun("x", Sum(Den("x"), CstInt 5)), Update(["a"; "b"; "c"], Den("f"), tree_test_omogeneity));;
+let update_test = Let("f", Fun("x", Sum(Den("x"), CstInt 5)), Update(["a"; "b"], Den("f"), tree_test_omogeneity));;
 eval update_test emptyEnv;;
 
 (*
@@ -281,15 +335,20 @@ tree_test3:
      a:1
     /   \
    /     \
-  b:2     c:true
+  b:2    c:true
             \
              \
-              d:0
+             d:0
+               \
+                \
+                e:0
 
 *)
 
-let tree_test3 = Node("a", CstInt 1, Node("b", CstInt 2, Empty, Empty), Node("c", CstBool true, Empty, Node("d", CstInt 0, Empty, Empty)));;
+let tree_test3 = Node("a", CstInt 1, Node("b", CstInt 2, Empty, Empty), Node("c", CstBool true, Empty, Node("d", CstInt 0, Empty, Node("e", CstInt 0, Empty, Empty))));;
 
-let select_test = Let("f", Fun("x", Iszero(Den("x"))), Select(["c"; "d"], Den("f"), tree_test3));;
+let select_test = Let("f", Fun("x", Iszero(Den("x"))), Select(["c"; "d"; "e"], Den("f"), tree_test3));;
 eval select_test emptyEnv;;
 
+let update_test = Let("f", Fun("x", Sum(Den("x"), CstInt 5)), Update(["d"; "e"], Den("f"), tree_test3));;
+eval update_test emptyEnv;;
