@@ -15,5 +15,5 @@ Primitive types and trees represented as exp, the trees can be homogeneous as no
 Functions applied where is possible to combine the type of the node with the input type of the function. <br />
 3 Operations for the trees:
 - ApplyOver: Application Function to all the nodes
-- Update: Application Function to selected specific Nodes
-- Select: Nodes' conditional selection
+- Update: Application Function to selected specific Nodes in path
+- Select: Nodes conditional selection by path and function
